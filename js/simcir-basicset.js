@@ -618,7 +618,7 @@
         });
   
         var update = function() {
-          $s.transform($knob, size.width / 2,
+          $knob.transform(size.width / 2,
               size.height / 2, _angle + 90);
           var max = 1 << numOutputs;
           var value = Math.min( ( (_angle - _MIN_ANGLE) /

@@ -13,6 +13,38 @@
 //  In
 //  Out
 
+
+jQuery.fn.transform = function() {
+  var dataName = 'simcir-transform';
+  var emptyData = { x: 0,
+                    y: 0,
+                    rotate: 0 }
+  var num = function(n) {
+    return n ? +n : 0;
+  };
+  return function(x, y, rot) {
+    if (arguments.length >= 2) {
+      var transf = 'translate(' + x + ' ' + y + ')';
+      if (rot) {
+        transf += ' rotate(' + rot + ')';
+      }
+      this.attr('transform', transf);
+      this.data(dataName, {
+          x: x,
+          y: y,
+          rotate: rot
+      });
+      return this;
+    } else if (arguments.length == 0) {
+      data = $.extend({}, emptyData, this.data(dataName));
+      return {x: num(data.x),
+              y: num(data.y),
+              rotate: num(data.rotate)};
+    }
+  };
+}();
+
+
 var simcir = function($) {
 
   var createSVGElement = function(tagName) {
@@ -68,36 +100,11 @@ var simcir = function($) {
     };
   };
 
-  var transform = function() {
-    var attrX = 'simcir-transform-x';
-    var attrY = 'simcir-transform-y';
-    var attrRotate = 'simcir-transform-rotate';
-    var num = function($o, k) {
-      var v = $o.attr(k);
-      return v? +v : 0;
-    };
-    return function($o, x, y, rotate) {
-      if (arguments.length >= 3) {
-        var transform = 'translate(' + x + ' ' + y + ')';
-        if (rotate) {
-          transform += ' rotate(' + rotate + ')';
-        }
-        $o.attr('transform', transform);
-        $o.attr(attrX, x);
-        $o.attr(attrY, y);
-        $o.attr(attrRotate, rotate);
-      } else if (arguments.length == 1) {
-        return {x: num($o, attrX), y: num($o, attrY),
-          rotate: num($o, attrRotate)};
-      }
-    };
-  }();
-
   var offset = function($o) {
     var x = 0;
     var y = 0;
     while ($o[0].nodeName != 'svg') {
-      var pos = transform($o);
+      var pos = $o.transform();
       x += pos.x;
       y += pos.y;
       $o = $o.parent();
@@ -427,7 +434,7 @@ var simcir = function($) {
       var layoutNodes = function(nodes, x) {
         var offset = (h - pitch * (nodes.length - 1) ) / 2;
         $.each(nodes, function(i, node) {
-          transform(node.$ui, x, pitch * i + offset);
+          node.$ui.transform(x, pitch * i + offset);
         });
       };
       layoutNodes(getInputs(), 0);
@@ -543,7 +550,7 @@ var simcir = function($) {
     };
     $.each(data.devices, function(i, deviceDef) {
       var $dev = createDevice(deviceDef, headless);
-      transform($dev, deviceDef.x, deviceDef.y);
+      $dev.transform(deviceDef.x, deviceDef.y);
       $devices.push($dev);
       $devMap[deviceDef.id] = $dev;
     });
@@ -731,7 +738,7 @@ var simcir = function($) {
     var bar_mouseDownHandler = function(event) {
       event.preventDefault();
       event.stopPropagation();
-      var pos = transform($bar);
+      var pos = $bar.transform();
       dragPoint = {
           x: event.pageX - pos.x,
           y: event.pageY - pos.y};
@@ -753,9 +760,9 @@ var simcir = function($) {
       event.preventDefault();
       event.stopPropagation();
       var off = $scrollbar.parents('svg').offset();
-      var pos = transform($scrollbar);
+      var pos = $scrollbar.transform();
       var y = event.pageY - off.top - pos.y;
-      var barPos = transform($bar);
+      var barPos = $bar.transform();
       if (y < barPos.y) {
         setValues(_value - _barSize, _min, _max, _barSize);
       } else {
@@ -781,7 +788,7 @@ var simcir = function($) {
       calc(function(unitSize) {
         $bar.children('rect').
           attr({x: 0, y: 0, width: _width, height: _barSize * unitSize});
-        transform($bar, 0, _value * unitSize);
+        $bar.transform(0, _value * unitSize);
       });
     };
     var calc = function(f) {
@@ -863,11 +870,10 @@ var simcir = function($) {
     var $toolboxDevicePane = createSVGElement('g');
     var $scrollbar = createScrollbar();
     $scrollbar.on('scrollValueChange', function(event) {
-      transform($toolboxDevicePane, 0,
-          -controller($scrollbar).getValue() );
+      $toolboxDevicePane.transform(0, -controller($scrollbar).getValue());
     });
     controller($scrollbar).setSize(barWidth, workspaceHeight);
-    transform($scrollbar, toolboxWidth - barWidth, 0);
+    $scrollbar.transform(toolboxWidth - barWidth, 0);
     var $toolboxPane = createSVGElement('g').
       attr('class', 'simcir-toolbox').
       append(createSVGElement('rect').
@@ -878,7 +884,7 @@ var simcir = function($) {
       append($scrollbar);
 
     var $devicePane = createSVGElement('g');
-    transform($devicePane, toolboxWidth, 0);
+    $devicePane.transform(toolboxWidth, 0);
     var $connectorPane = createSVGElement('g');
     var $temporaryPane = createSVGElement('g');
 
@@ -935,7 +941,7 @@ var simcir = function($) {
         var $dev = createDevice(deviceDef);
         $toolboxDevicePane.append($dev);
         var size = controller($dev).getSize();
-        transform($dev, (toolboxWidth - barWidth - size.width) / 2, y);
+        $dev.transform((toolboxWidth - barWidth - size.width) / 2, y);
         y += (size.height + fontSize + vgap);
       });
       controller($scrollbar).setValues(0, 0, y, workspaceHeight);
@@ -977,7 +983,7 @@ var simcir = function($) {
             connectors.push({from:inNode.id, to:inNode.getOutput().id});
           }
         });
-        var pos = transform($dev);
+        var pos = $dev.transform();
         var deviceDef = clone(device.deviceDef);
         deviceDef.id = device.id;
         deviceDef.x = pos.x;
@@ -1038,13 +1044,13 @@ var simcir = function($) {
     var adjustDevice = function($dev) {
       var pitch = unit / 2;
       var adjust = function(v) { return Math.round(v / pitch) * pitch; };
-      var pos = transform($dev);
+      var pos = $dev.transform();
       var size = controller($dev).getSize();
       var x = Math.max(0, Math.min(pos.x,
           workspaceWidth - toolboxWidth - size.width) );
       var y = Math.max(0, Math.min(pos.y,
           workspaceHeight - size.height) );
-      transform($dev, adjust(x), adjust(y) );
+      $dev.transform(adjust(x), adjust(y) );
     };
 
     var beginConnect = function(event, $target) {
@@ -1075,13 +1081,13 @@ var simcir = function($) {
       var $dev = $target.closest('.simcir-device');
       var pos = offset($dev);
       $dev = createDevice(controller($dev).deviceDef);
-      transform($dev, pos.x, pos.y);
+      $dev.transform(pos.x, pos.y);
       $temporaryPane.append($dev);
       var dragPoint = {
         x: event.pageX - pos.x,
         y: event.pageY - pos.y};
       dragMoveHandler = function(event) {
-        transform($dev,
+        $dev.transform(
             event.pageX - dragPoint.x,
             event.pageY - dragPoint.y);
       };
@@ -1089,8 +1095,8 @@ var simcir = function($) {
         var $target = $(event.target);
         if ($target.closest('.simcir-toolbox').length == 0) {
           $dev.detach();
-          var pos = transform($dev);
-          transform($dev, pos.x - toolboxWidth, pos.y);
+          var pos = $dev.transform();
+          $dev.transform(pos.x - toolboxWidth, pos.y);
           adjustDevice($dev);
           addDevice($dev);
         } else {
@@ -1113,7 +1119,7 @@ var simcir = function($) {
 
     var beginMoveDevice = function(event, $target) {
       var $dev = $target.closest('.simcir-device');
-      var pos = transform($dev);
+      var pos = $dev.transform();
       if (!controller($dev).isSelected() ) {
         deselectAll();
         addSelected($dev);
@@ -1127,13 +1133,13 @@ var simcir = function($) {
       dragMoveHandler = function(event) {
         // disable events while dragging.
         enableEvents($dev, false);
-        var curPos = transform($dev);
+        var curPos = $dev.transform();
         var deltaPos = {
           x: event.pageX - dragPoint.x - curPos.x,
           y: event.pageY - dragPoint.y - curPos.y};
         $.each($selectedDevices, function(i, $dev) {
-          var curPos = transform($dev);
-          transform($dev,
+          var curPos = $dev.transform();
+          $dev.transform(
               curPos.x + deltaPos.x,
               curPos.y + deltaPos.y);
         });
@@ -1178,7 +1184,7 @@ var simcir = function($) {
         var selRect = pointToRect(p1, p2);
         $devicePane.children('.simcir-device').each(function() {
           var $dev = $(this);
-          var devPos = transform($dev);
+          var devPos = $dev.transform();
           var devSize = controller($dev).getSize();
           var devRect = {
               x: devPos.x + pos.x,
@@ -1325,7 +1331,7 @@ var simcir = function($) {
       var $view = createSVG(size.width + hgap * 2,
           size.height + vgap * 2 + fontSize);
       var $dev = createDevice(deviceDef);
-      transform($dev, hgap, vgap);
+      $dev.transform(hgap, vgap);
 
       $view.append($dev);
       $tr.append($('<td></td>').css('text-align', 'center').append($view) );
@@ -1401,7 +1407,6 @@ var simcir = function($) {
     createWorkspace: createWorkspace,
     createSVGElement: createSVGElement,
     offset: offset,
-    transform: transform,
     enableEvents: enableEvents,
     graphics: graphics,
     controller: controller,
