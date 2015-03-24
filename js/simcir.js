@@ -47,6 +47,20 @@ jQuery.fn.transform.opts = {
               rotate: 0}
 };
 
+jQuery.fn.SVGOffset = function() {
+  $o = this;
+  var x = 0;
+  var y = 0;
+  while ($o[0].nodeName != 'svg') {
+    var pos = $o.transform();
+    x += pos.x;
+    y += pos.y;
+    $o = $o.parent();
+    if (!$o.length) return;
+  }
+  return {x: x, y: y};
+};
+
 
 var simcir = function($) {
 
@@ -110,17 +124,6 @@ var simcir = function($) {
   };
   $.fn.graphics.dataName = 'simcir-graphics';
 
-  var offset = function($o) {
-    var x = 0;
-    var y = 0;
-    while ($o[0].nodeName != 'svg') {
-      var pos = $o.transform();
-      x += pos.x;
-      y += pos.y;
-      $o = $o.parent();
-    }
-    return {x: x, y: y};
-  };
 
   var enableEvents = function($o, enable) {
     $o.css('pointer-events', enable? 'visiblePainted' : 'none');
@@ -935,8 +938,8 @@ var simcir = function($) {
         var device = controller($(this) );
         $.each(device.getInputs(), function(i, inNode) {
           if (inNode.getOutput() != null) {
-            var p1 = offset(inNode.$ui);
-            var p2 = offset(inNode.getOutput().$ui);
+            var p1 = inNode.$ui.SVGOffset();
+            var p2 = inNode.getOutput().$ui.SVGOffset();
             $connectorPane.append(
                 createConnector(p1.x, p1.y, p2.x, p2.y) );
           }
@@ -1066,7 +1069,7 @@ var simcir = function($) {
     var beginConnect = function(event, $target) {
       var $srcNode = $target.closest('.simcir-node');
       var off = $workspace.offset();
-      var pos = offset($srcNode);
+      var pos = $srcNode.SVGOffset();
       if ($srcNode.attr('simcir-node-type') == 'in') {
         disconnect($srcNode);
       }
@@ -1089,7 +1092,7 @@ var simcir = function($) {
 
     var beginNewDevice = function(event, $target) {
       var $dev = $target.closest('.simcir-device');
-      var pos = offset($dev);
+      var pos = $dev.SVGOffset();
       $dev = createDevice(controller($dev).deviceDef);
       $dev.transform(pos.x, pos.y);
       $temporaryPane.append($dev);
@@ -1186,7 +1189,7 @@ var simcir = function($) {
       };
       deselectAll();
       var off = $workspace.offset();
-      var pos = offset($devicePane);
+      var pos = $devicePane.SVGOffset();
       var p1 = {x: event.pageX - off.left, y: event.pageY - off.top};
       dragMoveHandler = function(event) {
         deselectAll();
@@ -1416,7 +1419,6 @@ var simcir = function($) {
     setupSimcir: setupSimcir,
     createWorkspace: createWorkspace,
     createSVGElement: createSVGElement,
-    offset: offset,
     enableEvents: enableEvents,
     controller: controller,
     unit: unit

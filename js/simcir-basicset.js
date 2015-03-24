@@ -596,7 +596,7 @@
         };
         var knob_mouseMoveHandler = function(event) {
           var off = $knob.parents('svg').offset();
-          var pos = $s.offset($knob);
+          var pos = $knob.SVGoffset();
           var cx = off.left + pos.x;
           var cy = off.top + pos.y;
           var dx = event.pageX - cx;
