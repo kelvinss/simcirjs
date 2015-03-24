@@ -15,34 +15,37 @@
 
 
 jQuery.fn.transform = function() {
-  var dataName = 'simcir-transform';
-  var emptyData = { x: 0,
-                    y: 0,
-                    rotate: 0 }
   var num = function(n) {
     return n ? +n : 0;
   };
   return function(x, y, rot) {
+    opts = this.transform.opts;
     if (arguments.length >= 2) {
       var transf = 'translate(' + x + ' ' + y + ')';
       if (rot) {
         transf += ' rotate(' + rot + ')';
       }
       this.attr('transform', transf);
-      this.data(dataName, {
+      this.data(opts.dataName, {
           x: x,
           y: y,
           rotate: rot
       });
       return this;
     } else if (arguments.length == 0) {
-      data = $.extend({}, emptyData, this.data(dataName));
+      data = $.extend({}, opts.emptyData, this.data(opts.dataName));
       return {x: num(data.x),
               y: num(data.y),
               rotate: num(data.rotate)};
     }
   };
 }();
+jQuery.fn.transform.opts = {
+  dataName: 'simcir-transform',
+  emptyData: {x: 0,
+              y: 0,
+              rotate: 0}
+};
 
 
 var simcir = function($) {
@@ -59,46 +62,53 @@ var simcir = function($) {
       viewBox: '0 0 ' + w + ' ' + h
     });
   };
-
-  var graphics = function($target) {
-    var attr = {};
-    var buf = '';
-    var moveTo = function(x, y) {
-      buf += ' M ' + x + ' ' + y;
-    };
-    var lineTo = function(x, y) {
-      buf += ' L ' + x + ' ' + y;
-    };
-    var curveTo = function(x1, y1, x, y) {
-      buf += ' Q ' + x1 + ' ' + y1 + ' ' + x + ' ' + y;
-    };
-    var closePath = function(close) {
+  
+  Graphics = function($parent) {
+    this.$parent = $parent;
+    this.attr = {};
+    this.buf = '';
+  };
+  
+  //Graphics.prototype = new Graphics();
+  $.extend(Graphics.prototype, {
+    moveTo: function(x, y) {
+      this.buf += ' M ' + x + ' ' + y;
+    },
+    lineTo: function(x, y) {
+      this.buf += ' L ' + x + ' ' + y;
+    },
+    curveTo: function(x1, y1, x, y) {
+      this.buf += ' Q ' + x1 + ' ' + y1 + ' ' + x + ' ' + y;
+    },
+    closePath: function(close) {
       if (close) {
         // really close path.
-        buf += ' Z';
+        this.buf += ' Z';
       }
-      $target.append(createSVGElement('path').
-          attr('d', buf).attr(attr) );
-      buf = '';
-    };
-    var drawRect = function(x, y, width, height) {
-      $target.append(createSVGElement('rect').
-          attr({x: x, y: y, width: width, height: height}).attr(attr) );
-    };
-    var drawCircle = function(x, y, r) {
-      $target.append(createSVGElement('circle').
-          attr({cx: x, cy: y, r: r}).attr(attr) );
-    };
-    return {
-      attr: attr,
-      moveTo: moveTo,
-      lineTo: lineTo,
-      curveTo: curveTo,
-      closePath: closePath,
-      drawRect: drawRect,
-      drawCircle: drawCircle
-    };
+      this.$parent.append( createSVGElement('path').attr(this.attr)
+                      .attr('d', this.buf) );
+      this.buf = '';
+    },
+    drawRect: function(x, y, width, height) {
+      this.$parent.append( createSVGElement('rect').attr(this.attr)
+                      .attr({x: x, y: y, width: width, height: height}) );
+    },
+    drawCircle: function(x, y, r) {
+      this.$parent.append( createSVGElement('circle')
+          .attr({cx: x, cy: y, r: r}).attr(this.attr) );
+    }
+  });
+
+  $.fn.graphics = function(){
+    // Return early if the element already has a plugin instance
+    var graphics = this.data($.fn.graphics.dataName);
+    if (graphics) return graphics;
+
+    var graphics = new Graphics(this);
+    this.data($.fn.graphics.dataName, graphics);
+    return graphics;
   };
+  $.fn.graphics.dataName = 'simcir-graphics';
 
   var offset = function($o) {
     var x = 0;
@@ -570,7 +580,7 @@ var simcir = function($) {
       var pad = 4;
       var $btn = createSVG(r, r).
         attr('class', 'simcir-dialog-close-button');
-      var g = graphics($btn);
+      var g = $btn.graphics();
       g.drawRect(0, 0, r, r);
       g.attr['class'] = 'simcir-dialog-close-button-symbol';
       g.moveTo(pad, pad);
@@ -1408,7 +1418,6 @@ var simcir = function($) {
     createSVGElement: createSVGElement,
     offset: offset,
     enableEvents: enableEvents,
-    graphics: graphics,
     controller: controller,
     unit: unit
   };

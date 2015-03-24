@@ -250,7 +250,7 @@
       device.createUI = function() {
         super_createUI();
         var size = device.getSize();
-        var g = $s.graphics(device.$ui);
+        var g = device.$ui.graphics();
         g.attr['class'] = 'simcir-basicset-symbol';
         draw(g, 
           (size.width - unit) / 2,
@@ -437,7 +437,7 @@
             }
           }
           $seg.children().remove();
-          drawSeg(seg, $s.graphics($seg), segs,
+          drawSeg(seg, $seg.graphics(), segs,
               hiColor, loColor, bgColor);
         };
         device.$ui.on('inputValueChange', update);
@@ -514,7 +514,7 @@
             }
           }
           $seg.children().remove();
-          drawSeg(seg, $s.graphics($seg), getPattern(value),
+          drawSeg(seg, $seg.graphics(), getPattern(value),
               hiColor, loColor, bgColor);
         };
         device.$ui.on('inputValueChange', update);
@@ -572,7 +572,7 @@
           append($s.createSVGElement('rect').
               attr({x:-10,y:-10,width:20,height:20}));
         var r = Math.min(size.width, size.height) / 4 * 1.5;
-        var g = $s.graphics($knob);
+        var g = $knob.graphics();
         g.drawCircle(0, 0, r);
         g.attr['class'] = 'simcir-basicset-knob-mark';
         g.moveTo(0, 0);
