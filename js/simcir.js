@@ -14,7 +14,23 @@
 //  Out
 
 
-jQuery.fn.transform = function() {
+(function($){
+
+
+var bindToPrivate = function(obj, prop, private){
+  Object.defineProperty(obj, prop, { 
+    get: function () { return private; },
+  });
+}
+
+var bindToAttr = function(obj, prop, obj2, prop2){
+  Object.defineProperty(obj, prop, { 
+    get: function () { return obj2[prop2]; },
+    set: function (val) { obj2[prop2]=val; return obj2[prop2]; }
+  });
+}
+
+$.fn.transform = function() {
   var num = function(n) {
     return n ? +n : 0;
   };
@@ -40,14 +56,14 @@ jQuery.fn.transform = function() {
     }
   };
 }();
-jQuery.fn.transform.opts = {
+$.fn.transform.opts = {
   dataName: 'simcir-transform',
   emptyData: {x: 0,
               y: 0,
               rotate: 0}
 };
 
-jQuery.fn.SVGOffset = function() {
+$.fn.SVGOffset = function() {
   $o = this;
   var x = 0;
   var y = 0;
@@ -62,12 +78,32 @@ jQuery.fn.SVGOffset = function() {
 };
 
 
-var simcir = function($) {
+var SimcirManager = (function () {
+
+  var unit = 16;
+  var fontSize = 12;
+
+  var config = {
+    unit: 16,
+    fontSize: 12,
+    barWidth: 16
+  };
+  var c = config;
+
+  var Manager = function(){
+    //this.unit = 16;
+    //this.fontSize = 12;
+    this.config = config;
+    this.c = this.config;
+  };
+  Manager.fn = Manager.prototype;
+  bindToPrivate( Manager.fn, 'unit', unit );
 
   var createSVGElement = function(tagName) {
     return $(document.createElementNS(
         'http://www.w3.org/2000/svg', tagName) );
   };
+  Manager.fn.createSVGElement = createSVGElement;
 
   var createSVG = function(w, h) {
     return createSVGElement('svg').attr({
@@ -76,7 +112,20 @@ var simcir = function($) {
       viewBox: '0 0 ' + w + ' ' + h
     });
   };
-  
+
+  var createLabel = function(text) {
+    return createSVGElement('text').
+      text(text).
+      css('font-size', fontSize + 'px');
+  };
+
+  var disableSelection = function($o) {
+    $o.each(function() {
+      this.onselectstart = function() { return false; };
+    }).css('-webkit-user-select', 'none');
+  };
+
+
   Graphics = function($parent) {
     this.$parent = $parent;
     this.attr = {};
@@ -128,12 +177,7 @@ var simcir = function($) {
   var enableEvents = function($o, enable) {
     $o.css('pointer-events', enable? 'visiblePainted' : 'none');
   };
-
-  var disableSelection = function($o) {
-    $o.each(function() {
-      this.onselectstart = function() { return false; };
-    }).css('-webkit-user-select', 'none');
-  };
+  Manager.fn.enableEvents = enableEvents;
 
   var controller = function() {
     var id = 'controller';
@@ -145,6 +189,7 @@ var simcir = function($) {
       }
     };
   }();
+  Manager.fn.controller = controller;
 
   var eventQueue = function() {
     var delay = 50; // ms
@@ -180,15 +225,6 @@ var simcir = function($) {
       postEvent: postEvent
     };
   }();
-
-  var unit = 16;
-  var fontSize = 12;
-
-  var createLabel = function(text) {
-    return createSVGElement('text').
-      text(text).
-      css('font-size', fontSize + 'px');
-  };
 
   var createNode = function(type, label, description, headless) {
     var $node = createSVGElement('g').
@@ -429,8 +465,8 @@ var simcir = function($) {
     var getSize = function() {
       var nodes = Math.max(device.getInputs().length,
           device.getOutputs().length);
-      return { width: unit * 2,
-        height: unit * Math.max(2, device.halfPitch?
+      return { width: c.unit * 2,
+        height: c.unit * Math.max(2, device.halfPitch?
             (nodes + 1) / 2 : nodes)};
     };
 
@@ -443,7 +479,7 @@ var simcir = function($) {
       device.$ui.children('.simcir-device-body').
         attr({x: 0, y: 0, width: w, height: h});
 
-      var pitch = device.halfPitch? unit / 2 : unit;
+      var pitch = device.halfPitch? c.unit / 2 : c.unit;
       var layoutNodes = function(nodes, x) {
         var offset = (h - pitch * (nodes.length - 1) ) / 2;
         $.each(nodes, function(i, node) {
@@ -707,7 +743,7 @@ var simcir = function($) {
       var super_getSize = device.getSize;
       device.getSize = function() {
         var size = super_getSize();
-        return {width: unit * 4, height: size.height};
+        return {width: c.unit * 4, height: size.height};
       };
       device.$ui.on('dblclick', function(event) {
         // open library,
@@ -728,6 +764,7 @@ var simcir = function($) {
     factories[type] = factory;
     defaultToolbox.push({type: type});
   };
+  Manager.fn.registerDevice = registerDevice;
 
   var createScrollbar = function() {
 
@@ -850,8 +887,8 @@ var simcir = function($) {
 
     var workspaceWidth = data.width;
     var workspaceHeight = data.height;
-    var barWidth = unit;
-    var toolboxWidth = data.showToolbox? unit * 6 + barWidth : 0;
+    var barWidth = c.barWidth;
+    var toolboxWidth = data.showToolbox? c.unit * 6 + barWidth : 0;
 
     var $workspace = createSVG(
         workspaceWidth, workspaceHeight).
@@ -865,7 +902,7 @@ var simcir = function($) {
 
       // fill with pin hole pattern.
       var patId = getUniqueId();
-      var pitch = unit / 2;
+      var pitch = c.unit / 2;
       var w = workspaceWidth - toolboxWidth;
       var h = workspaceHeight;
 
@@ -1055,7 +1092,7 @@ var simcir = function($) {
     var dragCompleteHandler = null;
 
     var adjustDevice = function($dev) {
-      var pitch = unit / 2;
+      var pitch = c.unit / 2;
       var adjust = function(v) { return Math.round(v / pitch) * pitch; };
       var pos = $dev.transform();
       var size = controller($dev).getSize();
@@ -1269,6 +1306,7 @@ var simcir = function($) {
 
     return $workspace;
   };
+  Manager.fn.createWorkspace = createWorkspace;
 
   var createPortFactory = function(type) {
     return function(device) {
@@ -1284,10 +1322,10 @@ var simcir = function($) {
         var cx = size.width / 2;
         var cy = size.height / 2;
         device.$ui.append(createSVGElement('circle').
-          attr({cx: cx, cy: cy, r: unit / 2}).
+          attr({cx: cx, cy: cy, r: c.unit / 2}).
           attr('class', 'simcir-port simcir-node-type-' + type) );
         device.$ui.append(createSVGElement('circle').
-          attr({cx: cx, cy: cy, r: unit / 4}).
+          attr({cx: cx, cy: cy, r: c.unit / 4}).
           attr('class', 'simcir-port-hole') );
       };
     };
@@ -1325,6 +1363,7 @@ var simcir = function($) {
     toggle();
     return $placeHolder;
   };
+  Manager.fn.setupSimcir = setupSimcir;
 
   var setupSimcirDoc = function($placeHolder) {
     var $table = $('<table><tbody></tbody></table>').
@@ -1399,6 +1438,7 @@ var simcir = function($) {
 
     $placeHolder.append($table);
   };
+  Manager.fn.setupSimcirDoc = setupSimcirDoc;
 
   $(function() {
     $('.simcir').each(function() {
@@ -1414,7 +1454,7 @@ var simcir = function($) {
     });
   });
 
-  return {
+  /*return {
     registerDevice: registerDevice,
     setupSimcir: setupSimcir,
     createWorkspace: createWorkspace,
@@ -1422,5 +1462,14 @@ var simcir = function($) {
     enableEvents: enableEvents,
     controller: controller,
     unit: unit
-  };
-}(jQuery);
+  };*/
+
+  return Manager;
+
+})();
+
+window.SimcirManager = SimcirManager;
+window.simcir = new SimcirManager();
+
+
+})(jQuery);
